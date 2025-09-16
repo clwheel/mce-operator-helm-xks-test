@@ -1,0 +1,18 @@
+apiVersion: multicluster.openshift.io/v1
+kind: MultiClusterEngine
+metadata:
+  name: multiclusterengine
+spec:
+  availabilityConfig: High
+  imagePullSecret: open-cluster-management-image-pull-credentials
+  overrides:
+    components:
+    {{- range $key, $val := .Values.components }}
+    - enabled: {{ $val }}
+      name: {{ $key | replace "_" "-" }}
+    {{- end }}
+  targetNamespace: '{{ .Release.Namespace }}'
+  tolerations:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/infra
+    operator: Exists
