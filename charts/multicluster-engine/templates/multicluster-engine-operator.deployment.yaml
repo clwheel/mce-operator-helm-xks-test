@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    capabilities: Seamless Upgrades
+    categories: Integration & Delivery
+    certified: "true"
+    description: Foundational components for central management of multiple OpenShift
+      Container Platform and Kubernetes clusters
+    support: Red Hat
+  creationTimestamp: null
+  labels:
+    control-plane: backplane-operator
+  name: multicluster-engine-operator
+  namespace: '{{ .Release.Namespace }}'
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      control-plane: backplane-operator
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        control-plane: backplane-operator
+        ocm-antiaffinity-selector: backplane-operator
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: ocm-antiaffinity-selector
+                  operator: In
+                  values:
+                  - backplane-operator
+              topologyKey: topology.kubernetes.io/zone
+            weight: 70
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: ocm-antiaffinity-selector
+                  operator: In
+                  values:
+                  - backplane-operator
+              topologyKey: kubernetes.io/hostname
+            weight: 35
+      containers:
+      - args:
+        - --leader-elect
+        command:
+        - /app/backplane-operator
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        {{- range $key, $val := .Values.operand_images }}
+        - name: OPERAND_IMAGE_{{ upper $key }}
+          value: '{{ $val }}'
+        {{- end }}
+        - name: OPERATOR_VERSION
+          value: {{ .Values.operator_version }}
+        - name: OPERATOR_PACKAGE
+          value: multicluster-engine
+        image: '{{ .Values.operator_image }}'
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        name: backplane-operator
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 100m
+            memory: 2Gi
+          requests:
+            cpu: 100m
+            memory: 20Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
+      imagePullSecrets:
+      - name: open-cluster-management-image-pull-credentials
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: multicluster-engine-operator
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: multicluster-engine-operator-webhook
+status: {}
