@@ -2,6 +2,10 @@ apiVersion: multicluster.openshift.io/v1
 kind: MultiClusterEngine
 metadata:
   name: multiclusterengine
+{{- if gt (len .Values.external_components) 0 }}
+  annotations:
+    installer.openshift.io/externally-managed: '{{ .Values.external_components | toJson }}'
+{{- end }}
 spec:
   availabilityConfig: High
   imagePullSecret: open-cluster-management-image-pull-credentials
