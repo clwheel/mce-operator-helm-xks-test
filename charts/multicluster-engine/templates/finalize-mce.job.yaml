@@ -26,7 +26,7 @@ spec:
           kubectl patch clustermanagementaddon work-manager --type merge -p '{"spec":{"supportedConfigs":[{"defaultConfig":{"name":"addon-hosted-config","namespace":"multicluster-engine"},"group":"addon.open-cluster-management.io","resource":"addondeploymentconfigs"}]}}'
           echo "Patch applied successfully."
 
-          if [[ `kubectl get MultiClusterEngine multiclusterengine -o jsonpath='{.spec.overrides.components[?(@.name=="local-cluster")].enabled}'` == "true" ]]
+          if [ `kubectl get MultiClusterEngine multiclusterengine -o jsonpath='{.spec.overrides.components[?(@.name=="local-cluster")].enabled}'` = "true" ]
           then
             echo "Waiting for namespace 'local-cluster' to exist..."
             until kubectl get namespace local-cluster; do
